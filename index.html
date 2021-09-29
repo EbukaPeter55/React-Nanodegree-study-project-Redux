@@ -5,6 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Udacit todo's goals</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
 </head>
 <body>
 <div>
@@ -27,34 +28,7 @@
       return Math.random().toString(36).substring(2) + (new Date()).getTime().toString(36);
     }
 
-//library
-function createStore (reducer) {
 
-    let state;
-    let listeners = []
-
-    // Get state
-    const getState = () => state
-
-    // Listen to changes
-    const subscribe = (listener) => {
-        listeners.push(listener)
-        return () =>{
-            listeners = listeners.filter(l => l !== listener)
-        }
-    }
-
-    const dispatch = (action) =>{
-    state = reducer(state, action)
-    listeners.forEach((listener)=> listener())
-    }
-    
-    return {
-        getState,
-        subscribe,
-        dispatch
-}
-}
 
 // app code
 const ADD_TODO = 'ADD_TODO';
@@ -126,14 +100,12 @@ switch(action.type){
 }
 }
 
-function app(state={}, action){
-return {
-    todos: todos(state.todos, action),
-    goals: goals(state.goals, action)
-}
-}
 
-const store = createStore(app)
+// We make use of our redux library in place of our written library
+const store = Redux.createStore(Redux.combineReducers({
+    todos,
+    goals
+}))
 store.subscribe(()=> {
 const { goals, todos } = store.getState()
 
