@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Udacit todo's goals</title>
+    <title>Udacity todo's goals</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js"></script>
     <script src="https://unpkg.com/react@16.3.0-alpha.1/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@16.3.0-alpha.1/umd/react-dom.development.js"></script>
@@ -113,6 +113,15 @@ switch(action.type){
 }
 }
 
+const loading = (state = true, action) => {
+    switch(action.type){
+    case RECEIVE_DATA :
+        return false;
+    default:
+        return state;
+    }
+}
+
 // Get goals
 // Real redux middleware
 const checker = (store) => (next) => (action) => {
@@ -152,7 +161,8 @@ const logger = (store) => (next) => (action) => {
 // We make use of our redux library in place of our written library
 const store = Redux.createStore(Redux.combineReducers({
     todos,
-    goals
+    goals,
+    loading
 }), Redux.applyMiddleware(checker, logger))
     </script>
     
@@ -183,20 +193,36 @@ const store = Redux.createStore(Redux.combineReducers({
     class Todos extends React.Component {
         addItem = (e) => {
             e.preventDefault()
-            const name = this.input.value
-            this.input.value = ''
 
-            this.props.store.dispatch(addTodoAction({
-            name,
-            complete: false,
-            id: generateId()
-        }))
-        }
-    removeItem = (todo) => {
-        this.props.store.dispatch(removeTodoAction(todo.id))
+            return API.saveTodo(this.input.value)
+            .then((todo) => {
+                this.props.store.dispatch(addTodoAction(todo))
+                this.input.value = ''
+            })
+            .catch(()=> {
+                alert('There was an error, try again.')
+            })
+            }
+    
+        removeItem = (todo) => {
+        // Using optimistic update, to enable the user gets an instant feedback
+    this.props.store.dispatch(removeTodoAction(todo.id))
+    
+        return API.deleteTodo(todo.id)
+        .catch(()=> {
+     this.props.store.dispatch(addTodoAction(todo))
+    alert("An error occurred, try again.")
+        })
     }
     toggleItem = (id) => {
+        // Using optimistic updates to toggle todo and get instant feedback
         this.props.store.dispatch(toggleTodoAction(id))
+
+        return API.saveTodoToggle(id)
+        .catch(() => {
+        this.props.store.dispatch(toggleTodoAction(id))
+        alert("An error occurred, try again.")
+        })
     }
         render() {
             return (
@@ -219,17 +245,25 @@ const store = Redux.createStore(Redux.combineReducers({
     class Goals extends React.Component {
         addGoal = (e) => {
             e.preventDefault()
-            const name = this.input.value
-            this.input.value = ''
 
-            this.props.store.dispatch(addGoalsAction({
-            name,
-            id: generateId()
-        }))
+            return API.saveGoal(this.input.value)
+            .then((goal) => {
+                this.props.store.dispatch(addGoalsAction(goal))
+                this.input.value = ''
+            })
+            .catch(()=> {
+                alert('There was an error, try again.')
+            })
         }
 
         removeItem = (goal) => {
         this.props.store.dispatch(removeGoalAction(goal.id))
+
+        return API.deleteGoal(goal.id)
+        .catch(()=> {
+        this.props.store.dispatch(addGoalsAction(goal))
+        alert("An error occurred, Try again.")
+        })
     }
         render() {
             return (
@@ -264,14 +298,18 @@ const store = Redux.createStore(Redux.combineReducers({
                 // console.log(['Todos', todos]);
                 // console.log(['Goals', goals]);
             })
-            console.log(API.fetchGoals());
+            // console.log(API.fetchGoals());
 
             store.subscribe(()=> this.forceUpdate())
         }
 
         render() {
-            const {store} = this.props
-            const { todos, goals } = store.getState()
+            const {store} = this.props;
+            const { todos, goals, loading } = store.getState();
+
+            if(loading === true){
+                return <h3>Loading.. </h3>
+            }
             return (
                 <div>
                     <Todos todos={todos} store={this.props.store}/>
