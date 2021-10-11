@@ -82,6 +82,20 @@ function receiveDataAction (todos, goals) {
     }
 }
 
+// Action creator for adding todo(thunk)
+function handleAddTodo (name, cb) {
+    return (dispatch) => {
+        return API.saveTodo(name)
+            .then((todo) => {
+                dispatch(addTodoAction(todo))
+                cb()
+            })
+            .catch(()=> {
+                alert('There was an error, try again.')
+            })
+    }
+}
+
 function handleDeleteTodo (todo) {
     return (dispatch) => {
       // Using optimistic update, to enable the user gets an instant feedback
@@ -94,6 +108,64 @@ alert("An error occurred, try again.")
     })
     }
  
+}
+
+// Action creator for toggle(thunk)
+function handleToggle (id){
+    return (dispatch) => {
+    // Using optimistic updates to toggle todo and get instant feedback
+    dispatch(toggleTodoAction(id))
+
+return API.saveTodoToggle(id)
+.catch(() => {
+dispatch(toggleTodoAction(id))
+alert("An error occurred, try again.")
+})
+    }
+}
+
+// Action creator for adding a goal (Thunk)
+function handleAddGoal (name, cb) {
+return (dispatch) => {
+    return API.saveGoal(name)
+            .then((goal) => {
+                dispatch(addGoalsAction(goal))
+                cb()
+            })
+            .catch(()=> {
+                alert('There was an error, try again.')
+            })
+}
+}
+
+// Action creator for deleting goal(thunk)
+function handleDeleteGoal (goal) {
+ return (dispatch) => {
+       dispatch(removeGoalAction(goal.id))
+
+        return API.deleteGoal(goal.id)
+        .catch(()=> {
+        dispatch(addGoalsAction(goal))
+        alert("An error occurred, Try again.")
+        })
+ }
+}
+
+// Action creator using thunk to get initial data
+function handleInitialData () {
+    return (dispatch) => {
+             // Get all todos and goals from the simulated database
+            return Promise.all(
+                [
+                    API.fetchGoals(),
+                    API.fetchTodos()
+            ]
+            ).then(([todos, goals]) => {
+                dispatch(receiveDataAction(todos, goals))
+                // console.log(['Todos', todos]);
+                // console.log(['Goals', goals]);
+            })
+    }
 }
 
 function todos (state = [], action) {
@@ -172,19 +244,14 @@ const logger = (store) => (next) => (action) => {
 }
 
 // Thunk middleware
-const thunk = (store) => (next) => (action) => {
-    if (typeof action === 'function') {
-        return action (store.dispatch)
-    }
-    return next(action)
-}
+
 
 // We make use of our redux library in place of our written library
 const store = Redux.createStore(Redux.combineReducers({
     todos,
     goals,
     loading
-}), Redux.applyMiddleware(thunk, checker, logger))
+}), Redux.applyMiddleware(ReduxThunk.default, checker, logger))
     </script>
     
 
@@ -214,15 +281,11 @@ const store = Redux.createStore(Redux.combineReducers({
     class Todos extends React.Component {
         addItem = (e) => {
             e.preventDefault()
+            this.props.store.dispatch(handleAddTodo(
+                this.input.value,
+            () => this.input.value = ''
+            ))
 
-            return API.saveTodo(this.input.value)
-            .then((todo) => {
-                this.props.store.dispatch(addTodoAction(todo))
-                this.input.value = ''
-            })
-            .catch(()=> {
-                alert('There was an error, try again.')
-            })
             }
     
         removeItem = (todo) => {
@@ -230,14 +293,8 @@ const store = Redux.createStore(Redux.combineReducers({
  
     }
     toggleItem = (id) => {
-        // Using optimistic updates to toggle todo and get instant feedback
-        this.props.store.dispatch(toggleTodoAction(id))
-
-        return API.saveTodoToggle(id)
-        .catch(() => {
-        this.props.store.dispatch(toggleTodoAction(id))
-        alert("An error occurred, try again.")
-        })
+        this.props.store.dispatch(handleToggle(id))
+     
     }
         render() {
             return (
@@ -261,24 +318,14 @@ const store = Redux.createStore(Redux.combineReducers({
         addGoal = (e) => {
             e.preventDefault()
 
-            return API.saveGoal(this.input.value)
-            .then((goal) => {
-                this.props.store.dispatch(addGoalsAction(goal))
-                this.input.value = ''
-            })
-            .catch(()=> {
-                alert('There was an error, try again.')
-            })
+            this.props.store.dispatch(handleAddGoal(
+                this.input.value,
+            () => this.input.value = ''
+            ))        
         }
 
         removeItem = (goal) => {
-        this.props.store.dispatch(removeGoalAction(goal.id))
-
-        return API.deleteGoal(goal.id)
-        .catch(()=> {
-        this.props.store.dispatch(addGoalsAction(goal))
-        alert("An error occurred, Try again.")
-        })
+            this.props.store.dispatch(handleDeleteGoal(goal))
     }
         render() {
             return (
@@ -302,19 +349,9 @@ const store = Redux.createStore(Redux.combineReducers({
     class App extends React.Component {
         componentDidMount(){
             const { store } = this.props
-            // Get all todos and goals from the simulated database
-            Promise.all(
-                [
-                    API.fetchGoals(),
-                    API.fetchTodos()
-            ]
-            ).then(([todos, goals]) => {
-                store.dispatch(receiveDataAction(todos, goals))
-                // console.log(['Todos', todos]);
-                // console.log(['Goals', goals]);
-            })
-            // console.log(API.fetchGoals());
-
+            // Thunkify the fetching of initial data
+            store.dispatch(handleInitialData())
+       
             store.subscribe(()=> this.forceUpdate())
         }
 
