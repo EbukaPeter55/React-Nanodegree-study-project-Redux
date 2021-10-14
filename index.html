@@ -281,7 +281,7 @@ const store = Redux.createStore(Redux.combineReducers({
     class Todos extends React.Component {
         addItem = (e) => {
             e.preventDefault()
-            this.props.store.dispatch(handleAddTodo(
+            this.props.dispatch(handleAddTodo(
                 this.input.value,
             () => this.input.value = ''
             ))
@@ -289,11 +289,11 @@ const store = Redux.createStore(Redux.combineReducers({
             }
     
         removeItem = (todo) => {
-            this.props.store.dispatch(handleDeleteTodo(todo))
+            this.props.dispatch(handleDeleteTodo(todo))
  
     }
     toggleItem = (id) => {
-        this.props.store.dispatch(handleToggle(id))
+        this.props.dispatch(handleToggle(id))
      
     }
         render() {
@@ -313,19 +313,48 @@ const store = Redux.createStore(Redux.combineReducers({
             );
         }
     }
+    // Using ContextAPI to access the store for todos
+    class ConnectedTodos extends React.Component {
+        render() {
+           return (
+               <Context.Consumer>
+                {(store) => {
+                    const {todos} = store.getState()
+
+                    return <Todos todos={todos} dispatch={store.dispatch}/>
+                }}
+                </Context.Consumer>
+           );
+       }
+    }
+
+    // Using ContextAPI to access the store for goals
+   class ConnectedGoals extends React.Component {
+       render() {
+           return (
+               <Context.Consumer>
+                {(store) => {
+                    const {goals} = store.getState()
+
+                    return <Goals goals={goals} dispatch={store.dispatch}/>
+                }}
+                </Context.Consumer>
+           );
+       }
+   }
 
     class Goals extends React.Component {
         addGoal = (e) => {
             e.preventDefault()
 
-            this.props.store.dispatch(handleAddGoal(
+            this.props.dispatch(handleAddGoal(
                 this.input.value,
             () => this.input.value = ''
             ))        
         }
 
         removeItem = (goal) => {
-            this.props.store.dispatch(handleDeleteGoal(goal))
+            this.props.dispatch(handleDeleteGoal(goal))
     }
         render() {
             return (
@@ -357,22 +386,50 @@ const store = Redux.createStore(Redux.combineReducers({
 
         render() {
             const {store} = this.props;
-            const { todos, goals, loading } = store.getState();
+            const { loading } = store.getState();
 
             if(loading === true){
                 return <h3>Loading.. </h3>
             }
             return (
                 <div>
-                    <Todos todos={todos} store={this.props.store}/>
-                    <Goals goals={goals} store={this.props.store}/>
-                </div>
+                    <ConnectedTodos/>
+                    <ConnectedGoals/>
+                    </div>
             );
         }
     }
 
+    // Using a connected component to receive the store and pass
+    // to our app
+    class ConnectedApp extends React.Component {
+        render() {
+            return (
+                <Context.Consumer>
+                {(store) => (
+                    <App store={store}/>
+                )}
+                </Context.Consumer>
+            );
+        }
+    }
+
+    // Using Context in our app
+    const Context = React.createContext()
+    class Provider extends React.Component {
+
+        render() {
+            return (
+               <Context.Provider value={this.props.store}>
+                {this.props.children}
+                </Context.Provider>
+            );
+        }
+    }
     ReactDOM.render(
-        <App store={store}/>,
+        <Provider store={store}>
+        <ConnectedApp/>
+        </Provider>,
         document.getElementById('app')
     )
     </script>
